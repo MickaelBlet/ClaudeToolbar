@@ -1,0 +1,34 @@
+"""Build script to create the standalone .exe using PyInstaller."""
+
+import PyInstaller.__main__
+import os
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
+sep = ";" if os.name == "nt" else ":"
+
+PyInstaller.__main__.run([
+    os.path.join(script_dir, "main.py"),
+    "--name=ClaudeToolbar",
+    "--onefile",
+    "--windowed",
+    f"--add-data={os.path.join(script_dir, 'config.py')}{sep}.",
+    f"--add-data={os.path.join(script_dir, 'claude_usage.py')}{sep}.",
+    "--hidden-import=pystray._win32",
+    "--hidden-import=curl_cffi",
+    "--hidden-import=tkinter",
+    # Exclude unused modules to reduce exe size
+    "--exclude-module=numpy",
+    "--exclude-module=pandas",
+    "--exclude-module=matplotlib",
+    "--exclude-module=scipy",
+    "--exclude-module=pytest",
+    "--exclude-module=unittest",
+    "--exclude-module=pydoc",
+    "--exclude-module=doctest",
+    "--exclude-module=lib2to3",
+    "--exclude-module=multiprocessing",
+    "--distpath", os.path.join(script_dir, "dist"),
+    "--workpath", os.path.join(script_dir, "build"),
+    "--specpath", script_dir,
+    "--noconfirm",
+])
