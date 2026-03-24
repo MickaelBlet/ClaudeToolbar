@@ -23,7 +23,7 @@ class ClaudeToolbar:
         self.session_data = None
         self.usage_data = None
         self.icon = None
-        self.refresh_interval = REFRESH_INTERVAL
+        self.refresh_interval = self.api.refresh_interval or REFRESH_INTERVAL
 
     def create_icon_image(self, percent=0, connected=True):
         """Create a tray icon showing context usage percentage."""
@@ -207,6 +207,7 @@ class ClaudeToolbar:
         root.destroy()
         if value:
             self.refresh_interval = value
+            self.api._save_config(refresh_interval=value)
             if self.icon:
                 self.icon.menu = self.build_menu()
 

@@ -44,6 +44,7 @@ Your **5-hour usage percentage** displayed as a bold number, color-coded at a gl
 
 - Detailed usage breakdown (5h, 7d, extra usage)
 - Active session info (context %, model, message count)
+- Configurable refresh interval (persisted across restarts)
 - Set Session Key / Refresh / Open Usage Page / Quit
 
 ---
@@ -87,11 +88,13 @@ On first launch, the app prompts for your **session key**:
 
 ## Configuration
 
-Edit `config.py`:
+The **refresh interval** can be changed directly from the tray menu via **"Refresh Interval (60s)..."**. The setting is persisted in `~/.claude/toolbar_config.json`.
+
+Default values in `config.py`:
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `REFRESH_INTERVAL` | `60` | Seconds between API refreshes |
+| `REFRESH_INTERVAL` | `60` | Seconds between API refreshes (configurable from tray) |
 | `MAX_CONTEXT_TOKENS` | `200,000` | Context window size for token estimation |
 
 ---

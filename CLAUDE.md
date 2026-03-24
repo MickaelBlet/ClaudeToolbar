@@ -27,7 +27,7 @@ config.py (constants) ──→ claude_usage.py (API client) ──→ main.py (
 ```
 
 - **main.py** — `ClaudeToolbar` class: tray icon rendering (Pillow), pystray menu, tkinter dialogs, threading
-- **claude_usage.py** — `ClaudeWebAPI` class: session auth, HTTP calls to claude.ai/api, token estimation
+- **claude_usage.py** — `ClaudeWebAPI` class: session auth, HTTP calls to claude.ai/api, token estimation, config persistence
 - **config.py** — `CLAUDE_API_BASE`, `REFRESH_INTERVAL`, `MAX_CONTEXT_TOKENS`, `CONFIG_FILE` path
 
 ### Threading Model
@@ -43,13 +43,18 @@ No locks — data access is single-writer (updater thread writes, main thread re
 All requests go through `curl_cffi` with Chrome TLS impersonation to bypass Cloudflare.
 
 - `GET /api/organizations` — validate session, get org UUID
-- `GET /api/organizations/{org}/usage` — 5h and 7d utilization percentages
+- `GET /api/organizations/{org}/usage` — 5h and 7d utilization percentages with reset timestamps
 - `GET /api/organizations/{org}/chat_conversations` — recent conversations
 - `GET /api/organizations/{org}/chat_conversations/{id}` — message details for token estimation
 
-### Auth & Storage
+### Config & Storage
 
-Session key stored as cookie (`sessionKey`). Persisted with org_id to `~/.claude/toolbar_config.json`.
+All user settings persisted to `~/.claude/toolbar_config.json`:
+- `session_key` — claude.ai session cookie
+- `org_id` — organization UUID (fetched on first auth)
+- `refresh_interval` — polling interval in seconds (configurable from tray menu, defaults to `REFRESH_INTERVAL` from config.py)
+
+`ClaudeWebAPI._save_config()` handles persistence. `ClaudeToolbar.__init__` reads `api.refresh_interval` on startup and falls back to the default constant.
 
 ## Key Constraints
 

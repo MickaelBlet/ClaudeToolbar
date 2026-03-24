@@ -26,24 +26,31 @@ class ClaudeWebAPI:
         self._load_config()
 
     def _load_config(self):
-        """Load saved session key from config file."""
+        """Load saved config from file."""
+        self.refresh_interval = None
         if CONFIG_FILE.exists():
             try:
                 data = json.loads(CONFIG_FILE.read_text())
                 self.session_key = data.get("session_key")
                 self.org_id = data.get("org_id")
+                self.refresh_interval = data.get("refresh_interval")
                 if self.session_key:
                     self._apply_session_key()
             except (json.JSONDecodeError, OSError):
                 pass
 
-    def _save_config(self):
-        """Save session key to config file."""
+    def _save_config(self, refresh_interval=None):
+        """Save config to file."""
         CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
-        CONFIG_FILE.write_text(json.dumps({
+        data = {
             "session_key": self.session_key,
             "org_id": self.org_id,
-        }))
+        }
+        if refresh_interval is not None:
+            data["refresh_interval"] = refresh_interval
+        elif self.refresh_interval is not None:
+            data["refresh_interval"] = self.refresh_interval
+        CONFIG_FILE.write_text(json.dumps(data))
 
     def _apply_session_key(self):
         """Apply session key as cookie."""
