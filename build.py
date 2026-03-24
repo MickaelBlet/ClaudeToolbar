@@ -11,6 +11,7 @@ PyInstaller.__main__.run([
     "--name=ClaudeToolbar",
     "--onefile",
     "--windowed",
+    f"--icon={os.path.join(script_dir, 'assets', 'app_icon.ico')}",
     f"--add-data={os.path.join(script_dir, 'config.py')}{sep}.",
     f"--add-data={os.path.join(script_dir, 'claude_usage.py')}{sep}.",
     "--hidden-import=pystray._win32",
