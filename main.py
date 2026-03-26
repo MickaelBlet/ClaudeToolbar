@@ -3,10 +3,13 @@ Claude Code Toolbar - Windows system tray app showing context and weekly usage.
 Fetches data from claude.ai web API.
 """
 
+import os
+import sys
 import threading
 import time
 import tkinter as tk
 from tkinter import simpledialog, messagebox
+import winreg
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -186,9 +189,47 @@ class ClaudeToolbar:
         items.append(pystray.MenuItem(f"Refresh Interval ({self.refresh_interval}s)...", self.on_set_refresh))
         items.append(pystray.MenuItem("Refresh", self.on_refresh))
         items.append(pystray.MenuItem("Open Usage Page", self.on_open_usage))
+        items.append(pystray.MenuItem(
+            "Launch at Startup",
+            self.on_toggle_startup,
+            checked=lambda item: self._is_startup_enabled(),
+        ))
         items.append(pystray.MenuItem("Quit", self.on_quit))
 
         return pystray.Menu(*items)
+
+    _STARTUP_REG_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
+    _STARTUP_REG_NAME = "ClaudeSystemTrayUsage"
+
+    def _get_exe_path(self):
+        """Return the path to use for the startup registry entry."""
+        if getattr(sys, "frozen", False):
+            return sys.executable
+        return f'"{sys.executable}" "{os.path.abspath(__file__)}"'
+
+    def _is_startup_enabled(self):
+        """Check if the app is registered to launch at startup."""
+        try:
+            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, self._STARTUP_REG_KEY, 0, winreg.KEY_READ)
+            winreg.QueryValueEx(key, self._STARTUP_REG_NAME)
+            winreg.CloseKey(key)
+            return True
+        except FileNotFoundError:
+            return False
+        except OSError:
+            return False
+
+    def on_toggle_startup(self, icon, item):
+        """Toggle launch at startup."""
+        try:
+            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, self._STARTUP_REG_KEY, 0, winreg.KEY_SET_VALUE)
+            if self._is_startup_enabled():
+                winreg.DeleteValue(key, self._STARTUP_REG_NAME)
+            else:
+                winreg.SetValueEx(key, self._STARTUP_REG_NAME, 0, winreg.REG_SZ, self._get_exe_path())
+            winreg.CloseKey(key)
+        except OSError as e:
+            print(f"Failed to update startup registry: {e}")
 
     def on_set_refresh(self, icon, item):
         """Prompt user for refresh interval."""

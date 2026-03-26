@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/tray_icons_preview.drawio.png" alt="Tray icon states" width="600"/>
+  <img src="assets/tray_icons_preview.drawio.png" alt="Tray icon states" />
 </p>
 
 <h1 align="center">ClaudeSystemTrayUsage</h1>
@@ -30,7 +30,7 @@ Your **5-hour usage percentage** displayed as a bold number on a dark rounded ba
 ### Hover Tooltip
 
 <p align="center">
-  <img src="assets/tooltip_preview.drawio.png" alt="Tooltip showing usage and reset timer" width="350"/>
+  <img src="assets/tooltip_preview.drawio.png" alt="Tooltip showing usage and reset timer" />
 </p>
 
 - **5-hour** and **7-day** usage at a glance
@@ -39,13 +39,14 @@ Your **5-hour usage percentage** displayed as a bold number on a dark rounded ba
 ### Right-Click Menu
 
 <p align="center">
-  <img src="assets/menu_preview.drawio.png" alt="Context menu with usage details" width="300"/>
+  <img src="assets/menu_preview.drawio.png" alt="Context menu with usage details" />
 </p>
 
 - Detailed usage breakdown (5h, 7d, extra usage)
 - Active session info (context %, model, message count)
 - Configurable refresh interval (persisted across restarts)
 - **Auto-detect Session Key** from Claude Desktop (no manual copy needed)
+- **Launch at Startup** toggle (adds/removes Windows Registry Run entry)
 - Set Session Key / Refresh / Open Usage Page / Quit
 
 ---
@@ -99,6 +100,8 @@ Click **"Auto-detect Session Key (Claude Desktop)"** in the tray menu. This extr
 ## Configuration
 
 The **refresh interval** can be changed directly from the tray menu via **"Refresh Interval (60s)..."**. The setting is persisted in `~/.claude/system_tray_usage_config.json`.
+
+**Launch at Startup** can be toggled from the tray menu. This adds or removes a `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` registry entry pointing to the app executable (or `python main.py` when running from source).
 
 Default values in `config.py`:
 

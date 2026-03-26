@@ -32,7 +32,7 @@ Three files, one data flow:
 config.py (constants) ──→ claude_usage.py (API client) ──→ main.py (tray UI)
 ```
 
-- **main.py** — `ClaudeToolbar` class: tray icon rendering (Pillow), pystray menu, tkinter dialogs, threading
+- **main.py** — `ClaudeToolbar` class: tray icon rendering (Pillow), pystray menu, tkinter dialogs, threading, Windows startup registry management
 - **claude_usage.py** — `ClaudeWebAPI` class: session auth, HTTP calls to claude.ai/api, token estimation, config persistence
 - **config.py** — `CLAUDE_API_BASE`, `REFRESH_INTERVAL`, `MAX_CONTEXT_TOKENS`, `CONFIG_FILE` path
 
@@ -64,7 +64,7 @@ All user settings persisted to `~/.claude/system_tray_config.json` (see `CONFIG_
 
 ## Key Constraints
 
-- **Windows-only** — uses pystray._win32, Arial fonts, Windows paths
+- **Windows-only** — uses pystray._win32, Arial fonts, Windows paths, `winreg` for startup registry
 - **curl_cffi required** — standard `requests` gets blocked by Cloudflare
 - **Chrome cookie DB is locked** while Chrome runs — browser cookie import was attempted and removed; manual paste is the only reliable auth method
 - **Tray icon is 64x64** but rendered at ~16-24px by Windows — text must be large/bold to be readable
