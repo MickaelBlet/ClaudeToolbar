@@ -11,4 +11,4 @@ REFRESH_INTERVAL = 60
 MAX_CONTEXT_TOKENS = 200_000
 
 # Config file for storing session key
-CONFIG_FILE = Path.home() / ".claude" / "toolbar_config.json"
+CONFIG_FILE = Path.home() / ".claude" / "system_tray_usage_config.json"

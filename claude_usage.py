@@ -1,7 +1,11 @@
 """Fetch Claude usage data from claude.ai web API."""
 
+import base64
 import json
 import os
+import shutil
+import sqlite3
+import tempfile
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -70,6 +74,174 @@ class ClaudeWebAPI:
 
     def is_authenticated(self):
         return self.session_key is not None and self.org_id is not None
+
+    def extract_session_from_desktop(self):
+        """Extract sessionKey from Claude Desktop's Chromium cookie store (Windows only).
+        Returns (session_key, org_id) or raises RuntimeError on failure.
+        Requires pycryptodome.
+        """
+        import ctypes
+        import ctypes.wintypes
+        import re
+
+        try:
+            from Cryptodome.Cipher import AES
+        except ImportError:
+            try:
+                from Crypto.Cipher import AES
+            except ImportError:
+                raise RuntimeError("Install pycryptodome first:\npip install pycryptodome")
+
+        class DATA_BLOB(ctypes.Structure):
+            _fields_ = [
+                ("cbData", ctypes.wintypes.DWORD),
+                ("pbData", ctypes.POINTER(ctypes.c_char)),
+            ]
+
+        def dpapi_decrypt(encrypted):
+            blob_in = DATA_BLOB(len(encrypted), ctypes.create_string_buffer(encrypted, len(encrypted)))
+            blob_out = DATA_BLOB()
+            if ctypes.windll.crypt32.CryptUnprotectData(
+                ctypes.byref(blob_in), None, None, None, None, 0, ctypes.byref(blob_out)
+            ):
+                data = ctypes.string_at(blob_out.pbData, blob_out.cbData)
+                ctypes.windll.kernel32.LocalFree(blob_out.pbData)
+                return data
+            raise RuntimeError("DPAPI decryption failed")
+
+        # Get encryption key from Local State
+        local_state_path = os.path.join(os.environ.get("APPDATA", ""), "Claude", "Local State")
+        if not os.path.exists(local_state_path):
+            raise RuntimeError("Claude Desktop not found (no Local State file)")
+
+        with open(local_state_path, "r", encoding="utf-8") as f:
+            local_state = json.load(f)
+
+        encrypted_key_b64 = local_state["os_crypt"]["encrypted_key"]
+        encrypted_key = base64.b64decode(encrypted_key_b64)[5:]  # Remove "DPAPI" prefix
+        key = dpapi_decrypt(encrypted_key)
+
+        # Read cookies DB
+        cookies_path = os.path.join(os.environ.get("APPDATA", ""), "Claude", "Network", "Cookies")
+        if not os.path.exists(cookies_path):
+            raise RuntimeError("Claude Desktop cookies DB not found")
+
+        tmp = tempfile.mktemp(suffix=".db")
+        # Try multiple methods to copy the locked Cookies file
+        import subprocess
+        copied = False
+        # Method 1: esentutl (Windows built-in, can copy locked files)
+        try:
+            subprocess.run(
+                ["esentutl.exe", "/y", cookies_path, "/vss", "/d", tmp],
+                check=True, capture_output=True,
+            )
+            copied = True
+        except (subprocess.CalledProcessError, OSError, FileNotFoundError):
+            pass
+        # Method 2: shutil.copy2 (works if not exclusively locked)
+        if not copied:
+            try:
+                shutil.copy2(cookies_path, tmp)
+                copied = True
+            except OSError:
+                pass
+        # Method 3: Windows 'copy' command
+        if not copied:
+            try:
+                subprocess.run(
+                    ["cmd", "/c", "copy", "/y", cookies_path, tmp],
+                    check=True, capture_output=True,
+                )
+                copied = True
+            except (subprocess.CalledProcessError, OSError):
+                pass
+        # Method 4: Kill Claude Desktop, copy, then relaunch
+        if not copied:
+            claude_was_running = False
+            try:
+                # Check if Claude Desktop is running
+                result = subprocess.run(
+                    ["tasklist", "/FI", "IMAGENAME eq claude.exe", "/NH"],
+                    capture_output=True, text=True,
+                )
+                claude_was_running = "claude.exe" in result.stdout.lower()
+
+                if claude_was_running:
+                    subprocess.run(
+                        ["taskkill", "/F", "/IM", "claude.exe"],
+                        capture_output=True,
+                    )
+                    time.sleep(2)
+
+                shutil.copy2(cookies_path, tmp)
+                copied = True
+            except OSError:
+                pass
+            finally:
+                if claude_was_running:
+                    # Relaunch Claude Desktop
+                    # Find the latest installed version
+                    claude_base = os.path.join(
+                        os.environ.get("LOCALAPPDATA", ""),
+                        "AnthropicClaude",
+                    )
+                    claude_exe = None
+                    if os.path.isdir(claude_base):
+                        app_dirs = sorted(
+                            [d for d in os.listdir(claude_base) if d.startswith("app-")],
+                            reverse=True,
+                        )
+                        for d in app_dirs:
+                            candidate = os.path.join(claude_base, d, "claude.exe")
+                            if os.path.exists(candidate):
+                                claude_exe = candidate
+                                break
+                    if claude_exe and os.path.exists(claude_exe):
+                        subprocess.Popen(
+                            [claude_exe],
+                            creationflags=0x00000008,  # DETACHED_PROCESS
+                        )
+
+        if not copied:
+            raise RuntimeError("Cannot copy Cookies file.")
+
+        try:
+            conn = sqlite3.connect(tmp)
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT name, encrypted_value FROM cookies "
+                "WHERE host_key = '.claude.ai' AND name IN ('sessionKey', 'lastActiveOrg')"
+            )
+            rows = cursor.fetchall()
+            conn.close()
+
+            results = {}
+            for name, encrypted_value in rows:
+                if encrypted_value[:3] == b"v10":
+                    nonce = encrypted_value[3:15]
+                    ciphertext_tag = encrypted_value[15:]
+                    cipher = AES.new(key, AES.MODE_GCM, nonce=nonce)
+                    decrypted = cipher.decrypt_and_verify(
+                        ciphertext_tag[:-16], ciphertext_tag[-16:]
+                    )
+                    text = decrypted.decode("latin-1")
+                    idx = text.find("sk-ant-")
+                    if idx >= 0:
+                        results[name] = text[idx:]
+                    else:
+                        m = re.search(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', text)
+                        results[name] = m.group(0) if m else text
+                else:
+                    raise RuntimeError(f"Unknown encryption version: {encrypted_value[:3]}")
+
+            if "sessionKey" not in results:
+                raise RuntimeError("sessionKey cookie not found in Claude Desktop")
+
+            return results["sessionKey"], results.get("lastActiveOrg")
+        finally:
+            if os.path.exists(tmp):
+                os.unlink(tmp)
 
     def _fetch_org_id(self):
         """Fetch the organization ID from the API."""

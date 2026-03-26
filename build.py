@@ -8,7 +8,7 @@ sep = ";" if os.name == "nt" else ":"
 
 PyInstaller.__main__.run([
     os.path.join(script_dir, "main.py"),
-    "--name=ClaudeToolbar",
+    "--name=ClaudeSystemTrayUsage",
     "--onefile",
     "--windowed",
     f"--icon={os.path.join(script_dir, 'assets', 'app_icon.ico')}",
@@ -17,17 +17,6 @@ PyInstaller.__main__.run([
     "--hidden-import=pystray._win32",
     "--hidden-import=curl_cffi",
     "--hidden-import=tkinter",
-    # Exclude unused modules to reduce exe size
-    "--exclude-module=numpy",
-    "--exclude-module=pandas",
-    "--exclude-module=matplotlib",
-    "--exclude-module=scipy",
-    "--exclude-module=pytest",
-    "--exclude-module=unittest",
-    "--exclude-module=pydoc",
-    "--exclude-module=doctest",
-    "--exclude-module=lib2to3",
-    "--exclude-module=multiprocessing",
     "--distpath", os.path.join(script_dir, "dist"),
     "--workpath", os.path.join(script_dir, "build"),
     "--specpath", script_dir,

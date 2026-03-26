@@ -15,7 +15,13 @@ python main.py
 
 # Build standalone exe
 python build.py
-# Output: dist/ClaudeToolbar.exe
+# Output: dist/ClaudeSystemTrayUsage.exe
+
+# Or use the batch file (installs deps + builds + runs)
+build.bat
+
+# Regenerate app icon (assets/app_icon.ico)
+python generate_icon.py
 ```
 
 ## Architecture
@@ -49,7 +55,7 @@ All requests go through `curl_cffi` with Chrome TLS impersonation to bypass Clou
 
 ### Config & Storage
 
-All user settings persisted to `~/.claude/toolbar_config.json`:
+All user settings persisted to `~/.claude/system_tray_config.json` (see `CONFIG_FILE` in config.py):
 - `session_key` — claude.ai session cookie
 - `org_id` — organization UUID (fetched on first auth)
 - `refresh_interval` — polling interval in seconds (configurable from tray menu, defaults to `REFRESH_INTERVAL` from config.py)

@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="assets/tray_icons_preview.png" alt="Tray icon states" width="600"/>
+  <img src="assets/tray_icons_preview.drawio.png" alt="Tray icon states" width="600"/>
 </p>
 
-<h1 align="center">Claude Toolbar</h1>
+<h1 align="center">ClaudeSystemTrayUsage</h1>
 
 <p align="center">
   <b>Real-time Claude.ai usage monitor in your Windows system tray</b>
@@ -19,7 +19,7 @@
 ## Features
 
 ### Live Tray Icon
-Your **5-hour usage percentage** displayed as a bold number, color-coded at a glance:
+Your **5-hour usage percentage** displayed as a bold number on a dark rounded background, color-coded at a glance:
 
 | Usage | Color | Meaning |
 |-------|-------|---------|
@@ -30,7 +30,7 @@ Your **5-hour usage percentage** displayed as a bold number, color-coded at a gl
 ### Hover Tooltip
 
 <p align="center">
-  <img src="assets/tooltip_preview.png" alt="Tooltip showing usage and reset timer" width="350"/>
+  <img src="assets/tooltip_preview.drawio.png" alt="Tooltip showing usage and reset timer" width="350"/>
 </p>
 
 - **5-hour** and **7-day** usage at a glance
@@ -39,12 +39,13 @@ Your **5-hour usage percentage** displayed as a bold number, color-coded at a gl
 ### Right-Click Menu
 
 <p align="center">
-  <img src="assets/menu_preview.png" alt="Context menu with usage details" width="300"/>
+  <img src="assets/menu_preview.drawio.png" alt="Context menu with usage details" width="300"/>
 </p>
 
 - Detailed usage breakdown (5h, 7d, extra usage)
 - Active session info (context %, model, message count)
 - Configurable refresh interval (persisted across restarts)
+- **Auto-detect Session Key** from Claude Desktop (no manual copy needed)
 - Set Session Key / Refresh / Open Usage Page / Quit
 
 ---
@@ -53,7 +54,7 @@ Your **5-hour usage percentage** displayed as a bold number, color-coded at a gl
 
 ### Option 1: Standalone .exe (recommended)
 
-Download `ClaudeToolbar.exe` from [Releases](../../releases) and run it. No Python needed.
+Download `ClaudeSystemTrayUsage.exe` from [Releases](../../releases) and run it. No Python needed.
 
 ### Option 2: Run from source
 
@@ -69,26 +70,35 @@ pip install -r requirements.txt
 python build.py
 ```
 
-The executable will be at `dist/ClaudeToolbar.exe`.
+The executable will be at `dist/ClaudeSystemTrayUsage.exe`.
 
 ---
 
 ## Setup
 
-On first launch, the app prompts for your **session key**:
+On first launch, you have two options to authenticate:
+
+### Auto-detect from Claude Desktop (recommended)
+
+Click **"Auto-detect Session Key (Claude Desktop)"** in the tray menu. This extracts the session cookie directly from Claude Desktop's local storage. Requires `pycryptodome` (`pip install pycryptodome`) when running from source.
+
+> If the cookie file is locked, the app will briefly close and relaunch Claude Desktop to read it.
+> The session cookie is stored locally at `~/.claude/system_tray_usage_config.json`
+
+### Manual session key
 
 1. Open [claude.ai](https://claude.ai) in your browser
 2. Press `F12` → **Application** tab → **Cookies** → `claude.ai`
 3. Find the cookie named **`sessionKey`**
 4. Copy its value and paste into the dialog
 
-> The key is stored locally at `~/.claude/toolbar_config.json`
+> The key is stored locally at `~/.claude/system_tray_usage_config.json`
 
 ---
 
 ## Configuration
 
-The **refresh interval** can be changed directly from the tray menu via **"Refresh Interval (60s)..."**. The setting is persisted in `~/.claude/toolbar_config.json`.
+The **refresh interval** can be changed directly from the tray menu via **"Refresh Interval (60s)..."**. The setting is persisted in `~/.claude/system_tray_usage_config.json`.
 
 Default values in `config.py`:
 
@@ -102,7 +112,7 @@ Default values in `config.py`:
 ## How It Works
 
 ```
-Claude Toolbar
+ClaudeSystemTrayUsage
     │
     ├─ Polls claude.ai/api every 60s
     │   ├─ /organizations/{org}/usage        → 5h & 7d utilization %
@@ -120,6 +130,7 @@ Claude Toolbar
 | [`pystray`](https://pypi.org/project/pystray/) | System tray icon |
 | [`Pillow`](https://pypi.org/project/Pillow/) | Icon image rendering |
 | [`curl_cffi`](https://pypi.org/project/curl-cffi/) | HTTP client (Cloudflare bypass) |
+| [`pycryptodome`](https://pypi.org/project/pycryptodome/) | Cookie decryption (for auto-detect) |
 
 ## Requirements
 

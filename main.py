@@ -47,7 +47,9 @@ class ClaudeToolbar:
             draw.text(((size - tw) / 2, (size - th) / 2), text, fill="#888888", font=font)
             return img
 
-        # Colored number on transparent background
+        # Black rounded background
+        draw.rounded_rectangle([0, 0, size - 1, size - 1], radius=8, fill="#333333")
+
         if percent <= 60:
             text_color = "#4ade80"  # green
         elif percent <= 85:
@@ -57,10 +59,10 @@ class ClaudeToolbar:
 
         num_text = str(int(percent))
         try:
-            font = ImageFont.truetype("arialbd.ttf", 64 if len(num_text) <= 2 else 48)
+            font = ImageFont.truetype("arialbd.ttf", 64 if len(num_text) <= 2 else 32)
         except OSError:
             try:
-                font = ImageFont.truetype("arial.ttf", 64 if len(num_text) <= 2 else 48)
+                font = ImageFont.truetype("arial.ttf", 64 if len(num_text) <= 2 else 32)
             except OSError:
                 font = ImageFont.load_default()
 
@@ -108,6 +110,7 @@ class ClaudeToolbar:
             items.append(pystray.MenuItem("Not connected", None, enabled=False))
             if self.api.last_error:
                 items.append(pystray.MenuItem(f"  Error: {self.api.last_error}", None, enabled=False))
+            items.append(pystray.MenuItem("Auto-detect Session Key (Claude Desktop)", self.on_extract_key))
             items.append(pystray.MenuItem("Set Session Key...", self.on_set_key))
             items.append(pystray.Menu.SEPARATOR)
             items.append(pystray.MenuItem("Quit", self.on_quit))
@@ -178,6 +181,7 @@ class ClaudeToolbar:
             items.append(pystray.MenuItem(f"Error: {self.api.last_error}", None, enabled=False))
 
         items.append(pystray.Menu.SEPARATOR)
+        items.append(pystray.MenuItem("Auto-detect Session Key (Claude Desktop)", self.on_extract_key))
         items.append(pystray.MenuItem("Set Session Key...", self.on_set_key))
         items.append(pystray.MenuItem(f"Refresh Interval ({self.refresh_interval}s)...", self.on_set_refresh))
         items.append(pystray.MenuItem("Refresh", self.on_refresh))
@@ -210,6 +214,50 @@ class ClaudeToolbar:
             self.api._save_config(refresh_interval=value)
             if self.icon:
                 self.icon.menu = self.build_menu()
+
+    def on_extract_key(self, icon, item):
+        """Try to extract session key from Claude Desktop."""
+        thread = threading.Thread(target=self._extract_desktop_key, daemon=True)
+        thread.start()
+
+    def _extract_desktop_key(self):
+        """Extract session key from Claude Desktop's cookie store."""
+        try:
+            session_key, org_id = self.api.extract_session_from_desktop()
+            if self.api.set_session_key(session_key):
+                if org_id:
+                    self.api.org_id = org_id
+                    self.api._save_config()
+                self.refresh_data()
+                root = tk.Tk()
+                root.withdraw()
+                root.attributes("-topmost", True)
+                messagebox.showinfo(
+                    "Claude Toolbar",
+                    "Session key extracted from Claude Desktop successfully!",
+                    parent=root,
+                )
+                root.destroy()
+            else:
+                root = tk.Tk()
+                root.withdraw()
+                root.attributes("-topmost", True)
+                messagebox.showerror(
+                    "Claude Toolbar",
+                    f"Key extracted but authentication failed.\n{self.api.last_error or ''}",
+                    parent=root,
+                )
+                root.destroy()
+        except Exception as e:
+            root = tk.Tk()
+            root.withdraw()
+            root.attributes("-topmost", True)
+            messagebox.showerror(
+                "Claude Toolbar",
+                f"Could not extract session key:\n{e}",
+                parent=root,
+            )
+            root.destroy()
 
     def on_set_key(self, icon, item):
         """Prompt user for session key."""
